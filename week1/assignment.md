@@ -33,6 +33,16 @@ ollama run mistral-nemo:12b
 ollama run llama3.1:8b
 ```
 
+or run these models in an Ollama Docker container:
+```bash
+# start Ollama server in Docker (persists models in a named volume)
+docker run -d --name ollama -p 11434:11434 -v ollama:/root/.ollama ollama/ollama
+
+# pull the models into the container
+docker exec ollama ollama pull mistral-nemo:12b
+docker exec ollama ollama pull llama3.1:8b
+```
+
 ## Techniques and source files
 - K-shot prompting — `week1/k_shot_prompting.py`
 - Chain-of-thought — `week1/chain_of_thought.py`
