@@ -15,7 +15,34 @@ Keep the implementation minimal.
 """
 
 # TODO: Fill this in!
-YOUR_REFLEXION_PROMPT = ""
+YOUR_REFLEXION_PROMPT = """
+You are a senior Python engineer performing a single-step reflexion improvement.
+
+You will receive:
+- The previous implementation of is_valid_password(password: str) -> bool
+- A list of failing test diagnostics
+
+Your task:
+- Produce an improved implementation that passes ALL tests.
+
+Rules to implement (and ONLY these rules):
+- length must be at least 8 characters
+- must contain at least one lowercase letter
+- must contain at least one uppercase letter
+- must contain at least one digit
+- must contain at least one special character from this set: !@#$%^&*()-_
+- must not contain any whitespace
+
+Important:
+- Do NOT require password.isalnum(). A valid password MUST include a special character, so it will NOT be alphanumeric.
+- Do NOT enforce any other allowed-character whitelist/blacklist besides the whitespace rule.
+
+Output format (STRICT):
+- Output ONLY a single fenced Python code block.
+- The code block MUST define exactly: is_valid_password(password: str) -> bool
+- No explanations, no comments, no extra code blocks.
+- Keep the implementation minimal and robust.
+"""
 
 
 # Ground-truth test suite used to evaluate generated code
@@ -94,9 +121,21 @@ def generate_initial_function(system_prompt: str) -> str:
 def your_build_reflexion_context(prev_code: str, failures: List[str]) -> str:
     """TODO: Build the user message for the reflexion step using prev_code and failures.
 
+
     Return a string that will be sent as the user content alongside the reflexion system prompt.
     """
-    return ""
+    failures_block = "\n".join(f"- {f}" for f in (failures or [])) or "- (no failures provided)"
+    return (
+        "You previously wrote this implementation:\n"
+        "```python\n"
+        f"{prev_code.strip()}\n"
+        "```\n\n"
+        "The test suite reported these failures:\n"
+        f"{failures_block}\n\n"
+        "Fix the implementation so it passes all tests.\n"
+        "Do NOT use password.isalnum() or any allowed-character whitelist; only enforce the listed rules.\n"
+        "Output ONLY one fenced Python code block with the corrected function."
+    )
 
 
 def apply_reflexion(

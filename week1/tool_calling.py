@@ -70,7 +70,34 @@ TOOL_REGISTRY: Dict[str, Callable[..., str]] = {
 # ==========================
 
 # TODO: Fill this in!
-YOUR_SYSTEM_PROMPT = ""
+YOUR_SYSTEM_PROMPT = """
+You are a tool-calling engine.
+
+Your job:
+- When the user says "Call the tool now.", you MUST output exactly ONE valid JSON object that represents a tool call.
+
+Available tool(s):
+- output_every_func_return_type
+
+Required JSON schema:
+- The output MUST be a single JSON object with exactly these keys:
+  - "tool": a string tool name
+  - "args": an object (JSON dictionary)
+
+Hard output constraints (STRICT):
+- Output ONLY the JSON object. No extra text before or after.
+- Do NOT wrap the JSON in markdown/code fences.
+- Use double quotes for all JSON keys and string values.
+- Do not include comments, trailing commas, or additional keys.
+
+What to output for this task:
+- Always call the tool "output_every_func_return_type".
+- Always pass "args" as an empty object.
+
+Example (this is the exact format you should return):
+{"tool":"output_every_func_return_type","args":{}}
+"""
+
 
 
 def resolve_path(p: str) -> str:
@@ -88,6 +115,7 @@ def extract_tool_call(text: str) -> Dict[str, Any]:
     """Parse a single JSON object from the model output."""
     text = text.strip()
     # Some models wrap JSON in code fences; attempt to strip
+
     if text.startswith("```") and text.endswith("```"):
         text = text.strip("`")
         if text.lower().startswith("json\n"):

@@ -37,7 +37,28 @@ QUESTION = (
 
 
 # TODO: Fill this in!
-YOUR_SYSTEM_PROMPT = ""
+YOUR_SYSTEM_PROMPT = """
+You are a careful Python engineer.
+
+Follow the user's instructions exactly.
+
+Hard requirements:
+- Use ONLY the information provided in the user's Context block. Do not invent base URLs, endpoints, headers, or response schemas.
+- Output MUST be exactly one fenced Python code block and nothing else.
+- The code block MUST include all necessary imports and define:
+  fetch_user_name(user_id: str, api_key: str) -> str
+- Use the documented Base URL and the documented endpoint.
+- Send the documented authentication header with the provided api_key.
+- On non-200 responses, raise an error (e.g., requests' raise_for_status()).
+- Return only the user's name as a string.
+
+Implementation expectations:
+- Use requests.get(...)
+- Build URL like: {Base URL} + "/users/" + user_id (respect the documented path).
+- Parse JSON and return the "name" field.
+"""
+
+
 
 
 # For this simple example
@@ -52,11 +73,39 @@ REQUIRED_SNIPPETS = [
 
 
 def YOUR_CONTEXT_PROVIDER(corpus: List[str]) -> List[str]:
-    """TODO: Select and return the relevant subset of documents from CORPUS for this task.
+    """Select and return the relevant subset of documents from CORPUS for this task.
 
-    For example, return [] to simulate missing context, or [corpus[0]] to include the API docs.
+    Goal: provide just enough API documentation for the model to follow the Base URL, endpoint,
+    and authentication header exactly.
+
+    Heuristic:
+    - Filter out placeholder strings like [missing_file] / [load_error].
+    - Score remaining docs by presence of key signals (Base URL, X-API-Key, /users/{id}).
+    - Return the single best document (or [] if nothing looks relevant).
     """
-    return []
+
+    def is_placeholder(doc: str) -> bool:
+        return doc.startswith("[missing_file]") or doc.startswith("[load_error]")
+
+    candidates: List[str] = [d for d in corpus if d and not is_placeholder(d)]
+    if not candidates:
+        return []
+
+    def score(doc: str) -> int:
+        s = 0
+        if "Base URL" in doc:
+            s += 2
+        if "X-API-Key" in doc:
+            s += 2
+        if "GET /users" in doc or "/users/{id}" in doc:
+            s += 2
+        return s
+
+    best_doc = max(candidates, key=score)
+    return [best_doc] if score(best_doc) > 0 else []
+
+
+
 
 
 def make_user_prompt(question: str, context_docs: List[str]) -> str:
@@ -104,8 +153,9 @@ def test_your_prompt(system_prompt: str, context_provider: Callable[[List[str]],
             ],
             options={"temperature": 0.0},
         )
-        output_text = response.message.content
+        output_text = response.message.content or ""
         code = extract_code_block(output_text)
+
         missing = [s for s in REQUIRED_SNIPPETS if s not in code]
         if not missing:
             print(output_text)
